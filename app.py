@@ -22,23 +22,23 @@ except Exception as e:
     st.error(f"❌ Could not load models. Please ensure 'models/' folder contains your .pkl files. Error: {e}")
     st.stop()
 
-st.sidebar.header("Step 1: Demographics & Behavior")
+st.sidebar.header("Demographics & Behavior")
 gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
 age = st.sidebar.slider("Age", 18, 100, 30)
 source = st.sidebar.selectbox("Information Source", ["Financial Consultants", "Newspapers", "Internet", "Television"])
 
-st.sidebar.header("Step 2: Investment Preferences")
+st.sidebar.header("Investment Preferences")
 investment_avenues = st.sidebar.selectbox("Do you currently have Investment Avenues?", ["Yes", "No"])
 avenue = st.sidebar.selectbox("Preferred Investment Avenue", ["Mutual Funds", "Equity Market", "Fixed Deposits", "Public Provident Fund", "Gold"])
 
-st.sidebar.header("Step 3: Asset Ranking (1-5)")
+st.sidebar.header("Asset Ranking (1-5)")
 mutual_funds = st.sidebar.slider("Mutual Funds Preference", 1, 5, 3)
 debentures = st.sidebar.slider("Debentures Preference", 1, 5, 3)
 government_bonds = st.sidebar.slider("Government Bonds Preference", 1, 5, 3)
 ppf = st.sidebar.slider("PPF Preference", 1, 5, 3)
 gold = st.sidebar.slider("Gold Preference", 1, 5, 3)
 
-st.sidebar.header("Step 4: Objectives & Duration")
+st.sidebar.header("Objectives & Duration")
 factor = st.sidebar.selectbox("Primary Factor", ["Returns", "Risk", "Tax Benefit", "Lock-in Period"])
 objective = st.sidebar.selectbox("Investment Objective", ["Capital Appreciation", "Income", "Growth"])
 purpose = st.sidebar.selectbox("Investment Purpose", ["Wealth Creation", "Retirement", "Education", "Healthcare"])
@@ -49,7 +49,7 @@ savings_obj = st.sidebar.selectbox("What are your savings objectives?", ["Retire
 
 input_data = pd.DataFrame({
     'gender': [gender],
-    'age': [float(age)], # Forced float
+    'age': [float(age)], 
     'Investment_Avenues': [investment_avenues],
     'Mutual_Funds': [float(mutual_funds)],
     'Debentures': [float(debentures)],
@@ -67,7 +67,7 @@ input_data = pd.DataFrame({
     'Source': [source]
 })
 
-if st.button("🔍 Predict Investor Risk Profile"):
+if st.button("🔍 Predict"):
     try:
         # pipeline to predict
         pred_encoded = model.predict(input_data)
@@ -98,7 +98,7 @@ if st.button("🔍 Predict Investor Risk Profile"):
 
 
         st.divider()
-        st.subheader("📌 Behavioral Drivers (Explainable AI)")
+        st.subheader("📌 Behavioral Drivers")
         
         step_name = 'model' if 'model' in model.named_steps else 'classifier'
         
