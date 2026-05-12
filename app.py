@@ -11,85 +11,65 @@ import seaborn as sns
 st.set_page_config(page_title="Investor Risk Profiler", layout="wide")
 
 st.title("📊 Investor Risk Profiling System")
-st.markdown("Explainable AI-based investor classification system")
+st.markdown("### Explainable AI-based investor classification system")
 
 # =========================
 # LOAD MODEL + ENCODER
 # =========================
 @st.cache_resource
 def load_models():
+    # Make sure these files are in a folder named 'models'
     model = joblib.load("models/investor_model.pkl")
     le = joblib.load("models/label_encoder.pkl")
     return model, le
 
-model, le = load_models()
+try:
+    model, le = load_models()
+except Exception as e:
+    st.error(f"❌ Could not load models. Please ensure 'models/' folder contains your .pkl files. Error: {e}")
+    st.stop()
 
 # =========================
-# FEATURE IMPORTANCE
+# SIDEBAR INPUTS
 # =========================
-feature_names = model.named_steps['preprocessor'].get_feature_names_out()
-importances = np.abs(model.named_steps['model'].coef_[0])
-
-feat_imp_df = pd.DataFrame({
-    "Feature": feature_names,
-    "Importance": importances
-}).sort_values(by="Importance", ascending=False)
-
-# =========================
-# SIDEBAR INPUTS (MATCH TRAINING EXACTLY)
-# =========================
-st.sidebar.header("Investor Inputs")
-
+st.sidebar.header("Step 1: Demographics & Behavior")
 gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
 age = st.sidebar.slider("Age", 18, 100, 30)
+source = st.sidebar.selectbox("Information Source", ["Financial Consultants", "Newspapers", "Internet", "Television"])
 
-investment_avenues = st.sidebar.selectbox(
-    "Investment Avenues",
-    ["Mutual_Funds", "Equity_Market", "Fixed_Deposits", "Government_Bonds", "Gold"]
-)
+st.sidebar.header("Step 2: Investment Preferences")
+investment_avenues = st.sidebar.selectbox("Do you currently have Investment Avenues?", ["Yes", "No"])
+avenue = st.sidebar.selectbox("Preferred Investment Avenue", ["Mutual Funds", "Equity Market", "Fixed Deposits", "Public Provident Fund", "Gold"])
 
-mutual_funds = st.sidebar.slider("Mutual Funds", 1, 5, 3)
-debentures = st.sidebar.slider("Debentures", 1, 5, 3)
-government_bonds = st.sidebar.slider("Government Bonds", 1, 5, 3)
-ppf = st.sidebar.slider("PPF", 1, 5, 3)
-gold = st.sidebar.slider("Gold", 1, 5, 3)
+st.sidebar.header("Step 3: Asset Ranking (1-5)")
+mutual_funds = st.sidebar.slider("Mutual Funds Preference", 1, 5, 3)
+debentures = st.sidebar.slider("Debentures Preference", 1, 5, 3)
+government_bonds = st.sidebar.slider("Government Bonds Preference", 1, 5, 3)
+ppf = st.sidebar.slider("PPF Preference", 1, 5, 3)
+gold = st.sidebar.slider("Gold Preference", 1, 5, 3)
 
-factor = st.sidebar.selectbox("Factor", ["Returns", "Risk", "Tax Benefits", "Lock-in Period"])
-objective = st.sidebar.selectbox("Objective", ["Capital Appreciation", "Income", "Growth"])
-purpose = st.sidebar.selectbox("Purpose", ["Wealth Creation", "Retirement", "Education", "Health Care"])
-
-duration = st.sidebar.selectbox("Duration", ["Short Term", "Medium Term", "Long Term"])
-invest_monitor = st.sidebar.selectbox("Invest Monitor", ["Daily", "Weekly", "Monthly", "Rarely"])
-
-expect = st.sidebar.slider("Expected Return (%)", 1, 100, 10)
-
-avenue = st.sidebar.selectbox(
-    "Avenue",
-    ["Mutual_Funds", "Equity_Market", "Fixed_Deposits", "PPF", "Gold"]
-)
-
-savings_obj = st.sidebar.selectbox(
-    "What are your savings objectives?",
-    ["Retirement", "Health Care", "Education", "Wealth Creation"]
-)
-
-source = st.sidebar.selectbox(
-    "Source",
-    ["Financial Consultants", "Newspapers", "Internet", "Television"]
-)
+st.sidebar.header("Step 4: Objectives & Duration")
+factor = st.sidebar.selectbox("Primary Factor", ["Returns", "Risk", "Tax Benefit", "Lock-in Period"])
+objective = st.sidebar.selectbox("Investment Objective", ["Capital Appreciation", "Income", "Growth"])
+purpose = st.sidebar.selectbox("Investment Purpose", ["Wealth Creation", "Retirement", "Education", "Healthcare"])
+duration = st.sidebar.selectbox("Investment Duration", ["1-3 years", "3-5 years", "More than 5 years", "Less than 1 year"])
+invest_monitor = st.sidebar.selectbox("Monitoring Frequency", ["Daily", "Weekly", "Monthly", "Rarely"])
+expect = st.sidebar.selectbox("Expected Return", ["10%-20%", "20%-30%", "30%-40%"])
+savings_obj = st.sidebar.selectbox("What are your savings objectives?", ["Retirement", "Health Care", "Education", "Wealth Creation"])
 
 # =========================
-# INPUT DATAFRAME (MUST MATCH TRAINING EXACTLY)
+# THE FIX: PRECISE DATAFRAME CONSTRUCTION
 # =========================
+# We use the exact 17 columns you provided in the exact order.
 input_data = pd.DataFrame({
     'gender': [gender],
-    'age': [age],
+    'age': [float(age)], # Forced float
     'Investment_Avenues': [investment_avenues],
-    'Mutual_Funds': [mutual_funds],
-    'Debentures': [debentures],
-    'Government_Bonds': [government_bonds],
-    'PPF': [ppf],
-    'Gold': [gold],
+    'Mutual_Funds': [float(mutual_funds)],
+    'Debentures': [float(debentures)],
+    'Government_Bonds': [float(government_bonds)],
+    'PPF': [float(ppf)],
+    'Gold': [float(gold)],
     'Factor': [factor],
     'Objective': [objective],
     'Purpose': [purpose],
@@ -102,90 +82,65 @@ input_data = pd.DataFrame({
 })
 
 # =========================
-# FORCE NUMERIC TYPES (CRITICAL FIX)
+# PREDICTION ENGINE
 # =========================
-numeric_cols = ['age', 'Mutual_Funds', 'Debentures',
-                'Government_Bonds', 'PPF', 'Gold', 'Expect']
+if st.button("🔍 Predict Investor Risk Profile"):
+    try:
+        # Use the pipeline to predict
+        pred_encoded = model.predict(input_data)
+        pred_label = le.inverse_transform(pred_encoded)[0]
 
-input_data[numeric_cols] = input_data[numeric_cols].apply(pd.to_numeric)
+        # Calculate confidence if the model supports it
+        confidence = None
+        if hasattr(model, "predict_proba"):
+            confidence = np.max(model.predict_proba(input_data)) * 100
 
-# =========================
-# PREDICTION
-# =========================
-if st.button("🔍 Predict Investor Type"):
+        st.divider()
 
-    pred_encoded = model.predict(input_data)
-    pred_label = le.inverse_transform(pred_encoded)[0]
+        # Display Results
+        res_col1, res_col2 = st.columns(2)
+        with res_col1:
+            st.subheader("🎯 Prediction")
+            if "risk" in str(pred_label).lower():
+                st.error(f"**{pred_label.upper()}**")
+            else:
+                st.success(f"**{pred_label.upper()}**")
 
-    confidence = None
-    if hasattr(model, "predict_proba"):
-        confidence = np.max(model.predict_proba(input_data)) * 100
+        with res_col2:
+            st.subheader("📈 Model Confidence")
+            if confidence:
+                st.info(f"**{confidence:.2f}%**")
+            else:
+                st.warning("N/A")
 
-    st.markdown("---")
+        # =========================
+        # DYNAMIC FEATURE IMPORTANCE
+        # =========================
+        st.divider()
+        st.subheader("📌 Behavioral Drivers (Explainable AI)")
+        
+        # Detect if the model step is named 'model' or 'classifier'
+        step_name = 'model' if 'model' in model.named_steps else 'classifier'
+        
+        # Extract importance from coefficients
+        feature_names = model.named_steps['preprocessor'].get_feature_names_out()
+        importances = np.abs(model.named_steps[step_name].coef_[0])
 
-    # =========================
-    # RESULT
-    # =========================
-    col1, col2 = st.columns(2)
+        feat_imp_df = pd.DataFrame({
+            "Feature": feature_names,
+            "Importance": importances
+        }).sort_values(by="Importance", ascending=False)
 
-    with col1:
-        st.subheader("🧠 Prediction")
+        # Plotly-style Seaborn Chart
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sns.barplot(data=feat_imp_df.head(10), x="Importance", y="Feature", palette="coolwarm", ax=ax)
+        ax.set_title("Top 10 Features Driving This Prediction")
+        st.pyplot(fig)
 
-        if "risk" in str(pred_label).lower():
-            st.error("Risk-Oriented Investor")
-        else:
-            st.success("Conservative Investor")
+        # Strategy Insight
+        st.info(f"**Insight:** Your profile is most heavily influenced by features like **{feat_imp_df.iloc[0]['Feature']}**. Based on this, your recommended allocation leans toward assets that match your {purpose} goals.")
 
-    with col2:
-        st.subheader("📊 Confidence")
-
-        if confidence:
-            st.info(f"{confidence:.2f}%")
-        else:
-            st.warning("Not available")
-
-    # =========================
-    # FEATURE IMPORTANCE
-    # =========================
-    st.markdown("---")
-    st.subheader("📌 Key Behavioral Drivers")
-
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.barplot(
-        data=feat_imp_df.head(10),
-        x="Importance",
-        y="Feature",
-        ax=ax
-    )
-    ax.set_title("Top Influencing Features")
-    st.pyplot(fig)
-
-    # =========================
-    # INSIGHT
-    # =========================
-    st.markdown("---")
-    st.subheader("🧠 Insight")
-
-    st.write("""
-    Your investor profile is mainly driven by behavioral financial choices such as 
-    return expectations, investment purpose, and asset allocation preferences.
-    """)
-
-    # =========================
-    # STRATEGY
-    # =========================
-    st.markdown("---")
-    st.subheader("📌 Investment Strategy")
-
-    if "risk" in str(pred_label).lower():
-        st.write("""
-        - 60% Equity / Mutual Funds  
-        - 25% Growth assets  
-        - 15% Fixed income  
-        """)
-    else:
-        st.write("""
-        - 50% Fixed Deposits / Bonds  
-        - 30% PPF  
-        - 20% Low-risk Mutual Funds  
-        """)
+    except Exception as e:
+        st.error("⚠️ Prediction Failed")
+        st.write(f"**Technical Error:** {e}")
+        st.info("Check if your dropdown values (e.g., '10%-20%') match your training dataset exactly.")
