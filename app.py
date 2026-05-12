@@ -1,197 +1,162 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "id": "44501eb7-05d3-4088-9343-18101dadcb71",
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import streamlit as st\n",
-    "import pandas as pd\n",
-    "import numpy as np\n",
-    "import joblib\n",
-    "import matplotlib.pyplot as plt\n",
-    "import seaborn as sns\n",
-    "\n",
-    "st.set_page_config(page_title=\"Investor Risk Profiler\", layout=\"wide\")\n",
-    "\n",
-    "st.title(\"Investor Risk Profiling System\")\n",
-    "st.markdown(\"Explainable AI for investor behavior classification\")\n",
-    "\n",
-    "@st.cache_resource\n",
-    "def load_models():\n",
-    "    model = joblib.load(\"models/investor_pipeline.pkl\")\n",
-    "    le = joblib.load(\"models/label_encoder.pkl\")\n",
-    "    return model, le\n",
-    "\n",
-    "model, le = load_models()\n",
-    "\n",
-    "feature_names = model.named_steps['preprocessor'].get_feature_names_out()\n",
-    "importances = np.abs(model.named_steps['model'].coef_[0])\n",
-    "\n",
-    "feat_imp_df = pd.DataFrame({\n",
-    "    \"Feature\": feature_names,\n",
-    "    \"Importance\": importances\n",
-    "}).sort_values(by=\"Importance\", ascending=False)\n",
-    "\n",
-    "st.sidebar.header(\"Investor Inputs\")\n",
-    "\n",
-    "gender = st.sidebar.selectbox(\"Gender\", [\"Male\", \"Female\"])\n",
-    "age = st.sidebar.slider(\"Age\", 18, 100, 30)\n",
-    "\n",
-    "investment_avenues = st.sidebar.selectbox(\n",
-    "    \"Investment Avenues\",\n",
-    "    [\"Mutual Funds\", \"Equity\", \"Fixed Deposits\", \"Bonds\", \"Gold\"]\n",
-    ")\n",
-    "\n",
-    "mutual_funds = st.sidebar.slider(\"Mutual Funds Preference\", 1, 5, 3)\n",
-    "debentures = st.sidebar.slider(\"Debentures Preference\", 1, 5, 3)\n",
-    "government_bonds = st.sidebar.slider(\"Government Bonds Preference\", 1, 5, 3)\n",
-    "ppf = st.sidebar.slider(\"PPF Preference\", 1, 5, 3)\n",
-    "gold = st.sidebar.slider(\"Gold Preference\", 1, 5, 3)\n",
-    "\n",
-    "factor = st.sidebar.selectbox(\"Factor\", [\"Returns\", \"Risk\", \"Tax Benefit\", \"Lock-in Period\"])\n",
-    "objective = st.sidebar.selectbox(\"Objective\", [\"Capital Appreciation\", \"Income\", \"Growth\"])\n",
-    "purpose = st.sidebar.selectbox(\"Purpose\", [\"Retirement\", \"Wealth Creation\", \"Education\", \"Health\"])\n",
-    "\n",
-    "duration = st.sidebar.selectbox(\"Duration\", [\"Short Term\", \"Medium Term\", \"Long Term\"])\n",
-    "invest_monitor = st.sidebar.selectbox(\"Investment Monitoring\", [\"Daily\", \"Weekly\", \"Monthly\", \"Rarely\"])\n",
-    "\n",
-    "expect = st.sidebar.slider(\"Expected Return (%)\", 1, 100, 10)\n",
-    "\n",
-    "avenue = st.sidebar.selectbox(\"Preferred Avenue\", [\"Mutual Funds\", \"Equity\", \"Fixed Deposits\", \"PPF\", \"Gold\"])\n",
-    "\n",
-    "savings_obj = st.sidebar.selectbox(\n",
-    "    \"Savings Objectives\",\n",
-    "    [\"Retirement\", \"Health Care\", \"Education\", \"Wealth Creation\"]\n",
-    ")\n",
-    "\n",
-    "source = st.sidebar.selectbox(\n",
-    "    \"Information Source\",\n",
-    "    [\"Financial Consultants\", \"Newspapers\", \"Internet\", \"Television\"]\n",
-    ")\n",
-    "\n",
-    "\n",
-    "input_data = pd.DataFrame({\n",
-    "    'gender': [gender],\n",
-    "    'age': [age],\n",
-    "    'Investment_Avenues': [investment_avenues],\n",
-    "    'Mutual_Funds': [mutual_funds],\n",
-    "    'Debentures': [debentures],\n",
-    "    'Government_Bonds': [government_bonds],\n",
-    "    'PPF': [ppf],\n",
-    "    'Gold': [gold],\n",
-    "    'Factor': [factor],\n",
-    "    'Objective': [objective],\n",
-    "    'Purpose': [purpose],\n",
-    "    'Duration': [duration],\n",
-    "    'Invest_Monitor': [invest_monitor],\n",
-    "    'Expect': [expect],\n",
-    "    'Avenue': [avenue],\n",
-    "    'What are your savings objectives?': [savings_obj],\n",
-    "    'Source': [source]\n",
-    "})\n",
-    "\n",
-    "if st.button(\" Predict Investor Type\"):\n",
-    "\n",
-    "    pred_encoded = model.predict(input_data)\n",
-    "    pred_label = le.inverse_transform(pred_encoded)[0]\n",
-    "\n",
-    "    confidence = None\n",
-    "    if hasattr(model, \"predict_proba\"):\n",
-    "        confidence = np.max(model.predict_proba(input_data)) * 100\n",
-    "\n",
-    "    st.markdown(\"---\")\n",
-    "\n",
-    "    col1, col2 = st.columns(2)\n",
-    "\n",
-    "    with col1:\n",
-    "        st.subheader(\"Prediction\")\n",
-    "\n",
-    "        if \"risk\" in pred_label.lower():\n",
-    "            st.error(\"Risk-Oriented Investor\")\n",
-    "        else:\n",
-    "            st.success(\"Conservative Investor\")\n",
-    "\n",
-    "    with col2:\n",
-    "        st.subheader(\" Confidence\")\n",
-    "\n",
-    "        if confidence:\n",
-    "            st.info(f\"{confidence:.2f}%\")\n",
-    "        else:\n",
-    "            st.warning(\"Not available\")\n",
-    "\n",
-    "    st.markdown(\"---\")\n",
-    "    st.subheader(\"📌 Key Drivers of Your Profile\")\n",
-    "\n",
-    "    fig, ax = plt.subplots(figsize=(10, 5))\n",
-    "    sns.barplot(\n",
-    "        data=feat_imp_df.head(10),\n",
-    "        x=\"Importance\",\n",
-    "        y=\"Feature\",\n",
-    "        ax=ax\n",
-    "    )\n",
-    "    ax.set_title(\"Top Behavioral Drivers\")\n",
-    "    st.pyplot(fig)\n",
-    "\n",
-    "    st.markdown(\"---\")\n",
-    "    st.subheader(\"Behavioral Insight\")\n",
-    "\n",
-    "    st.write(\"\"\"\n",
-    "    Your investor profile is primarily driven by **financial behavior and expectations**, \n",
-    "    especially return expectations, investment purpose, and asset allocation choices.\n",
-    "    Demographics play a smaller role in classification.\n",
-    "    \"\"\")\n",
-    "\n",
-    "    st.markdown(\"---\")\n",
-    "    st.subheader(\"Influence Breakdown\")\n",
-    "\n",
-    "    st.markdown(\"\"\"\n",
-    "    - 🔴 **Behavioral Factors:** High impact (Expectations, Purpose)\n",
-    "    - 🟠 **Asset Allocation:** Medium impact (PPF, Mutual Funds, Debentures)\n",
-    "    - 🔵 **Demographics:** Low impact (Age, Gender)\n",
-    "    \"\"\")\n",
-    "\n",
-    "    st.markdown(\"---\")\n",
-    "    st.subheader(\"📌 Investment Strategy\")\n",
-    "\n",
-    "    if \"risk\" in pred_label.lower():\n",
-    "        st.write(\"\"\"\n",
-    "        Suggested Portfolio:\n",
-    "        - 60% Equity / Mutual Funds  \n",
-    "        - 25% Growth Assets  \n",
-    "        - 15% Fixed Income  \n",
-    "        \"\"\")\n",
-    "    else:\n",
-    "        st.write(\"\"\"\n",
-    "        Suggested Portfolio:\n",
-    "        - 50% Fixed Deposits / Bonds  \n",
-    "        - 30% PPF / Stable Instruments  \n",
-    "        - 20% Low-risk Mutual Funds  \n",
-    "        \"\"\")"
-   ]
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "Python 3 (ipykernel)",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.4"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 5
-}
+import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+st.set_page_config(page_title="Investor Risk Profiler", layout="wide")
+
+st.title("📊 Investor Risk Profiling System")
+st.markdown("Explainable AI for investor behavior classification")
+
+@st.cache_resource
+def load_models():
+    model = joblib.load("models/investor_pipeline.pkl")
+    le = joblib.load("models/label_encoder.pkl")
+    return model, le
+
+model, le = load_models()
+
+feature_names = model.named_steps['preprocessor'].get_feature_names_out()
+importances = np.abs(model.named_steps['model'].coef_[0])
+
+feat_imp_df = pd.DataFrame({
+    "Feature": feature_names,
+    "Importance": importances
+}).sort_values(by="Importance", ascending=False)
+
+st.sidebar.header("Investor Inputs")
+
+gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
+age = st.sidebar.slider("Age", 18, 100, 30)
+
+investment_avenues = st.sidebar.selectbox(
+    "Investment Avenues",
+    ["Mutual Funds", "Equity", "Fixed Deposits", "Bonds", "Gold"]
+)
+
+mutual_funds = st.sidebar.slider("Mutual Funds Preference", 1, 5, 3)
+debentures = st.sidebar.slider("Debentures Preference", 1, 5, 3)
+government_bonds = st.sidebar.slider("Government Bonds Preference", 1, 5, 3)
+ppf = st.sidebar.slider("PPF Preference", 1, 5, 3)
+gold = st.sidebar.slider("Gold Preference", 1, 5, 3)
+
+factor = st.sidebar.selectbox("Factor", ["Returns", "Risk", "Tax Benefit", "Lock-in Period"])
+objective = st.sidebar.selectbox("Objective", ["Capital Appreciation", "Income", "Growth"])
+purpose = st.sidebar.selectbox("Purpose", ["Retirement", "Wealth Creation", "Education", "Health"])
+
+duration = st.sidebar.selectbox("Duration", ["Short Term", "Medium Term", "Long Term"])
+invest_monitor = st.sidebar.selectbox("Investment Monitoring", ["Daily", "Weekly", "Monthly", "Rarely"])
+
+expect = st.sidebar.slider("Expected Return (%)", 1, 100, 10)
+
+avenue = st.sidebar.selectbox("Preferred Avenue", ["Mutual Funds", "Equity", "Fixed Deposits", "PPF", "Gold"])
+
+savings_obj = st.sidebar.selectbox(
+    "Savings Objectives",
+    ["Retirement", "Health Care", "Education", "Wealth Creation"]
+)
+
+source = st.sidebar.selectbox(
+    "Information Source",
+    ["Financial Consultants", "Newspapers", "Internet", "Television"]
+)
+
+input_data = pd.DataFrame({
+    'gender': [gender],
+    'age': [age],
+    'Investment_Avenues': [investment_avenues],
+    'Mutual_Funds': [mutual_funds],
+    'Debentures': [debentures],
+    'Government_Bonds': [government_bonds],
+    'PPF': [ppf],
+    'Gold': [gold],
+    'Factor': [factor],
+    'Objective': [objective],
+    'Purpose': [purpose],
+    'Duration': [duration],
+    'Invest_Monitor': [invest_monitor],
+    'Expect': [expect],
+    'Avenue': [avenue],
+    'What are your savings objectives?': [savings_obj],
+    'Source': [source]
+})
+
+if st.button("🔍 Predict Investor Type"):
+
+    pred_encoded = model.predict(input_data)
+    pred_label = le.inverse_transform(pred_encoded)[0]
+
+    confidence = None
+    if hasattr(model, "predict_proba"):
+        confidence = np.max(model.predict_proba(input_data)) * 100
+
+    st.markdown("---")
+ 
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("🧠 Prediction")
+
+        if "risk" in pred_label.lower():
+            st.error("Risk-Oriented Investor")
+        else:
+            st.success("Conservative Investor")
+
+    with col2:
+        st.subheader("📊 Confidence")
+
+        if confidence:
+            st.info(f"{confidence:.2f}%")
+        else:
+            st.warning("Not available")
+         
+    st.markdown("---")
+    st.subheader("📌 Key Drivers of Your Profile")
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    sns.barplot(
+        data=feat_imp_df.head(10),
+        x="Importance",
+        y="Feature",
+        ax=ax
+    )
+    ax.set_title("Top Behavioral Drivers")
+    st.pyplot(fig)
+
+    st.markdown("---")
+    st.subheader("🧠 Behavioral Insight")
+
+    st.write("""
+    Your investor profile is primarily driven by **financial behavior and expectations**, 
+    especially return expectations, investment purpose, and asset allocation choices.
+    Demographics play a smaller role in classification.
+    """)
+
+    st.markdown("---")
+    st.subheader("📊 Influence Breakdown")
+
+    st.markdown("""
+    - 🔴 **Behavioral Factors:** High impact (Expectations, Purpose)
+    - 🟠 **Asset Allocation:** Medium impact (PPF, Mutual Funds, Debentures)
+    - 🔵 **Demographics:** Low impact (Age, Gender)
+    """)
+
+    st.markdown("---")
+    st.subheader("📌 Investment Strategy")
+
+    if "risk" in pred_label.lower():
+        st.write("""
+        Suggested Portfolio:
+        - 60% Equity / Mutual Funds  
+        - 25% Growth Assets  
+        - 15% Fixed Income  
+        """)
+    else:
+        st.write("""
+        Suggested Portfolio:
+        - 50% Fixed Deposits / Bonds  
+        - 30% PPF / Stable Instruments  
+        - 20% Low-risk Mutual Funds  
+        """)
