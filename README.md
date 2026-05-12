@@ -123,17 +123,19 @@ Investor-Profiling-Risk-Prediction-System/
 ├── README.md
 │
 ├── data/
-│   └── training_data.csv
-│
+│   └── raw
+│       └── Finance.csv
+│   └── processed
+│       └── cleaned_data.csv
 ├── models/
 │   ├── investor_pipeline.pkl
 │   └── label_encoder.pkl
 │
 ├── notebooks/
-│   └── investor_analysis.ipynb
-│
-└── visuals/
-    └── feature_importance.png
+│   └── Preprocessing and EDA.ipynb
+│   └── Model Training and Evaluation.ipynb
+└── reports/
+    └── Investor Persona.pptx
 ```
 
 ## Installation
