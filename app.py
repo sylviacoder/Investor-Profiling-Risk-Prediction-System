@@ -12,7 +12,7 @@ st.markdown("Explainable AI for investor behavior classification")
 
 @st.cache_resource
 def load_models():
-    model = joblib.load("models/investor_pipeline.pkl")
+    model = joblib.load("models/investor_model.pkl")
     le = joblib.load("models/label_encoder.pkl")
     return model, le
 
