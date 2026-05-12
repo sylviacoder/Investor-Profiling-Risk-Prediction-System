@@ -5,20 +5,13 @@ import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# =========================
-# PAGE CONFIG
-# =========================
 st.set_page_config(page_title="Investor Risk Profiler", layout="wide")
 
 st.title("📊 Investor Risk Profiling System")
 st.markdown("### Explainable AI-based investor classification system")
 
-# =========================
-# LOAD MODEL + ENCODER
-# =========================
 @st.cache_resource
 def load_models():
-    # Make sure these files are in a folder named 'models'
     model = joblib.load("models/investor_model.pkl")
     le = joblib.load("models/label_encoder.pkl")
     return model, le
@@ -29,9 +22,6 @@ except Exception as e:
     st.error(f"❌ Could not load models. Please ensure 'models/' folder contains your .pkl files. Error: {e}")
     st.stop()
 
-# =========================
-# SIDEBAR INPUTS
-# =========================
 st.sidebar.header("Step 1: Demographics & Behavior")
 gender = st.sidebar.selectbox("Gender", ["Male", "Female"])
 age = st.sidebar.slider("Age", 18, 100, 30)
@@ -57,10 +47,6 @@ invest_monitor = st.sidebar.selectbox("Monitoring Frequency", ["Daily", "Weekly"
 expect = st.sidebar.selectbox("Expected Return", ["10%-20%", "20%-30%", "30%-40%"])
 savings_obj = st.sidebar.selectbox("What are your savings objectives?", ["Retirement", "Health Care", "Education", "Wealth Creation"])
 
-# =========================
-# THE FIX: PRECISE DATAFRAME CONSTRUCTION
-# =========================
-# We use the exact 17 columns you provided in the exact order.
 input_data = pd.DataFrame({
     'gender': [gender],
     'age': [float(age)], # Forced float
@@ -81,23 +67,20 @@ input_data = pd.DataFrame({
     'Source': [source]
 })
 
-# =========================
-# PREDICTION ENGINE
-# =========================
 if st.button("🔍 Predict Investor Risk Profile"):
     try:
-        # Use the pipeline to predict
+        # pipeline to predict
         pred_encoded = model.predict(input_data)
         pred_label = le.inverse_transform(pred_encoded)[0]
 
-        # Calculate confidence if the model supports it
+        # confidence level
         confidence = None
         if hasattr(model, "predict_proba"):
             confidence = np.max(model.predict_proba(input_data)) * 100
 
         st.divider()
 
-        # Display Results
+        # Results
         res_col1, res_col2 = st.columns(2)
         with res_col1:
             st.subheader("🎯 Prediction")
@@ -113,16 +96,12 @@ if st.button("🔍 Predict Investor Risk Profile"):
             else:
                 st.warning("N/A")
 
-        # =========================
-        # DYNAMIC FEATURE IMPORTANCE
-        # =========================
+
         st.divider()
         st.subheader("📌 Behavioral Drivers (Explainable AI)")
         
-        # Detect if the model step is named 'model' or 'classifier'
         step_name = 'model' if 'model' in model.named_steps else 'classifier'
         
-        # Extract importance from coefficients
         feature_names = model.named_steps['preprocessor'].get_feature_names_out()
         importances = np.abs(model.named_steps[step_name].coef_[0])
 
@@ -131,13 +110,13 @@ if st.button("🔍 Predict Investor Risk Profile"):
             "Importance": importances
         }).sort_values(by="Importance", ascending=False)
 
-        # Plotly-style Seaborn Chart
+        # Plotly
         fig, ax = plt.subplots(figsize=(10, 6))
         sns.barplot(data=feat_imp_df.head(10), x="Importance", y="Feature", palette="coolwarm", ax=ax)
         ax.set_title("Top 10 Features Driving This Prediction")
         st.pyplot(fig)
 
-        # Strategy Insight
+        # Insight
         st.info(f"**Insight:** Your profile is most heavily influenced by features like **{feat_imp_df.iloc[0]['Feature']}**. Based on this, your recommended allocation leans toward assets that match your {purpose} goals.")
 
     except Exception as e:
