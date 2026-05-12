@@ -142,7 +142,7 @@ Investor-Profiling-Risk-Prediction-System/
 
 Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/sylviacoder/Investor-Profiling-Risk-Prediction-System.git
 cd Investor-Profiling-Risk-Prediction-System
 ```
 Install dependencies:
